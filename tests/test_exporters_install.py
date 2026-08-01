@@ -104,6 +104,46 @@ def test_merge_dry_run_does_not_write(tmp_path):
     assert prefs.read_bytes() == before
 
 
+def _make_replacements_db(path, rows):
+    import sqlite3
+
+    con = sqlite3.connect(path)
+    con.execute("CREATE TABLE ZTEXTREPLACEMENTENTRY (ZSHORTCUT TEXT, ZPHRASE TEXT)")
+    con.executemany("INSERT INTO ZTEXTREPLACEMENTENTRY VALUES (?, ?)", rows)
+    con.commit()
+    con.close()
+
+
+def test_macos_pairs_read_from_text_replacements_db(tmp_path):
+    db = tmp_path / "TextReplacements.db"
+    _make_replacements_db(db, [("よろ", "よろしくお願いします。"), ("omw", "On my way!")])
+    pairs = install._macos_pairs_from_db(db)
+    assert pairs == {("よろ", "よろしくお願いします。"), ("omw", "On my way!")}
+
+
+def test_macos_pairs_db_is_opened_read_only(tmp_path):
+    # 入力中の辞書を壊さないこと。読み取り専用で開くので書き込みは失敗する。
+    db = tmp_path / "TextReplacements.db"
+    _make_replacements_db(db, [("あ", "亜")])
+    before = db.read_bytes()
+    install._macos_pairs_from_db(db)
+    assert db.read_bytes() == before
+
+
+def test_macos_pairs_returns_none_when_db_missing(tmp_path):
+    assert install._macos_pairs_from_db(tmp_path / "absent.db") is None
+
+
+def test_macos_pairs_falls_back_when_db_unreadable(tmp_path, monkeypatch):
+    broken = tmp_path / "TextReplacements.db"
+    broken.write_bytes(b"not a sqlite database")
+    monkeypatch.setattr(install, "TEXT_REPLACEMENTS_DB", broken)
+    monkeypatch.setattr(
+        install, "_macos_pairs_from_defaults", lambda: {("よろ", "フォールバック")}
+    )
+    assert install.existing_macos_pairs() == {("よろ", "フォールバック")}
+
+
 def test_merge_creates_backup(tmp_path):
     prefs = tmp_path / "azookey.plist"
     with prefs.open("wb") as fh:

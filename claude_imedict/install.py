@@ -1,8 +1,15 @@
-"""生成した辞書を azooKey (macOS) のユーザー辞書へ直接マージする。
+"""既存のユーザー辞書の読み取りと、azooKey 独自辞書へのマージ。
 
-azooKey のユーザー辞書は sandbox コンテナ内の UserDefaults に JSON 文字列
-として保存されている。入力メソッドが起動中だとメモリ上の状態で上書き
-されてしまうため、書き込み前にプロセスの生存を確認する。
+**通常は azooKey へ直接書く必要はない。** azooKeyMac は macOS のユーザ辞書
+(テキスト置換) の実体である `~/Library/KeyboardServices/TextReplacements.db` を
+`SELECT ZSHORTCUT, ZPHRASE FROM ZTEXTREPLACEMENTENTRY` で直接読み、
+KeyboardServices ディレクトリの変更を監視して自動追随する。macOS 側へ登録すれば
+azooKey にも反映されるので、`merge_into_azookey` は OS と共有しない運用
+(azooKey にだけ入れたい語がある等) のための補助手段。
+
+azooKey 独自辞書は sandbox コンテナ内の UserDefaults に JSON 文字列として
+保存されている。入力メソッドが起動中だとメモリ上の状態で上書きされるため、
+書き込み前にプロセスの生存を確認する。
 """
 
 from __future__ import annotations
@@ -10,6 +17,7 @@ from __future__ import annotations
 import json
 import plistlib
 import shutil
+import sqlite3
 import subprocess
 import time
 from dataclasses import dataclass
@@ -20,6 +28,11 @@ from .exporters import AZOOKEY_DEFAULTS_KEY, AZOOKEY_PREFS, azookey_items
 from .extract import Candidate
 
 AZOOKEY_PROCESS = "azooKeyMac"
+
+# macOS ユーザ辞書 (テキスト置換) の実体。NSGlobalDomain の
+# NSUserDictionaryReplacementItems は古いミラーで実際より少ない件数しか
+# 返さないことがあるため、こちらを一次情報源とする。
+TEXT_REPLACEMENTS_DB = Path.home() / "Library/KeyboardServices/TextReplacements.db"
 
 
 @dataclass(slots=True)
@@ -85,8 +98,35 @@ def existing_azookey_pairs(prefs_path: Path = AZOOKEY_PREFS) -> set[tuple[str, s
     }
 
 
-def existing_macos_pairs() -> set[tuple[str, str]]:
-    """macOS のテキスト置換に既登録の (読み, 表記) の集合。"""
+def _macos_pairs_from_db(db_path: Path | None = None) -> set[tuple[str, str]] | None:
+    """テキスト置換 DB から (読み, 表記) を読む。読めなければ None。
+
+    azooKeyMac が参照しているのと同じテーブル・同じ列を読む。読み取り専用で
+    開くので、入力中の辞書を壊すことはない。
+
+    既定値は定義時ではなく呼び出し時に解決する (モジュール定数の差し替えを
+    テストや設定から効かせるため)。
+    """
+    db_path = db_path or TEXT_REPLACEMENTS_DB
+    if not db_path.is_file():
+        return None
+    try:
+        con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True)
+    except sqlite3.Error:
+        return None
+    try:
+        rows = con.execute(
+            "SELECT ZSHORTCUT, ZPHRASE FROM ZTEXTREPLACEMENTENTRY"
+        ).fetchall()
+    except sqlite3.Error:
+        return None
+    finally:
+        con.close()
+    return {(str(s or ""), str(p)) for s, p in rows if p}
+
+
+def _macos_pairs_from_defaults() -> set[tuple[str, str]]:
+    """NSGlobalDomain のミラーから読む (DB が読めないときのフォールバック)。"""
     try:
         out = subprocess.run(
             ["/usr/bin/defaults", "export", "NSGlobalDomain", "-"],
@@ -107,6 +147,12 @@ def existing_macos_pairs() -> set[tuple[str, str]]:
         if isinstance(it, dict) and it.get("with"):
             pairs.add((str(it.get("replace", "")), str(it["with"])))
     return pairs
+
+
+def existing_macos_pairs() -> set[tuple[str, str]]:
+    """macOS のユーザ辞書 (テキスト置換) に既登録の (読み, 表記) の集合。"""
+    pairs = _macos_pairs_from_db()
+    return pairs if pairs is not None else _macos_pairs_from_defaults()
 
 
 def merge_into_azookey(

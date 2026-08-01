@@ -78,25 +78,36 @@ claude-imedict build terms.tsv -o dict-out
 レビュー後の TSV から辞書ファイルを作り直します。読みを自分で書き足した
 行を追加しても構いません。
 
-### 3. 取り込む
+### 3. 取り込む — macOS へ入れるだけでよい
 
-**macOS 標準**
 システム設定 → キーボード → テキスト入力 → 「テキスト置換」を開き、
 `macos-user-dictionary.plist` をリストへドラッグ&ドロップします。
 
-**azooKey**
+**azooKey へは自動で反映されます。** azooKeyMac は macOS ユーザ辞書の実体である
+`~/Library/KeyboardServices/TextReplacements.db` を直接読み
+(`SELECT ZSHORTCUT, ZPHRASE FROM ZTEXTREPLACEMENTENTRY`)、KeyboardServices
+ディレクトリの変更を監視して追随します。読み込んだ内容は azooKey の
+`...preference.system_user_dictionary` に保持されます。設定は不要です。
+
+`azookey-user-dictionary.json` / `.csv` は、**OS と共有しない運用**
+(azooKey にだけ入れたい語がある場合) のための予備です。
+
+<details>
+<summary>azooKey 独自辞書へ直接入れる場合</summary>
 
 ```sh
-claude-imedict install-azookey --json dict-out/azookey-user-dictionary.json
+claude-imedict install-azookey --json dict-out/azookey-user-dictionary.json --azookey-only
 ```
 
-既存のユーザー辞書エントリを保持したまま追記します (読みと表記が同じ組は
-スキップ)。書き込み前に plist のバックアップを取ります。
+`--azookey-only` が無いと、二重登録になる旨を表示して中断します。macOS 側にも
+同じ語がある状態で実行すると、`system_user_dictionary` 経由で届く語と重複します。
 
-azooKey が動作中だと、終了時にメモリ上の内容で plist が上書きされてしまう
-ため、実行は拒否されます。入力ソースを他の IME に切り替えてから実行するか、
-`--force-quit` を付けてください (macOS が必要時に再起動します)。
-`--dry-run` で件数だけ確認できます。
+既存エントリを保持したまま追記し (読みと表記が同じ組はスキップ)、書き込み前に
+plist のバックアップを取ります。azooKey が動作中だと終了時にメモリ上の内容で
+plist が上書きされるため実行は拒否されます。入力ソースを他の IME に切り替えるか
+`--force-quit` を付けてください。`--dry-run` で件数だけ確認できます。
+
+</details>
 
 ## 主なオプション
 
@@ -147,8 +158,18 @@ azooKey が動作中だと、終了時にメモリ上の内容で plist が上�
 
 | 対象 | 場所 |
 | --- | --- |
-| macOS 標準 | `NSGlobalDomain` の `NSUserDictionaryReplacementItems` / `~/Library/KeyboardServices/TextReplacements.db` |
-| azooKey | `~/Library/Containers/dev.ensan.inputmethod.azooKeyMac/Data/Library/Preferences/dev.ensan.inputmethod.azooKeyMac.plist` のキー `...preference.user_dictionary_temporal2` (JSON 文字列) |
+| macOS 標準（**一次情報源**） | `~/Library/KeyboardServices/TextReplacements.db` のテーブル `ZTEXTREPLACEMENTENTRY` (列 `ZSHORTCUT` / `ZPHRASE`) |
+| macOS 標準（ミラー） | `NSGlobalDomain` の `NSUserDictionaryReplacementItems` |
+| azooKey（OS 辞書の取り込み結果） | azooKey plist のキー `...preference.system_user_dictionary` |
+| azooKey（独自辞書） | 同 plist のキー `...preference.user_dictionary_temporal2` |
+
+azooKey plist の場所は
+`~/Library/Containers/dev.ensan.inputmethod.azooKeyMac/Data/Library/Preferences/dev.ensan.inputmethod.azooKeyMac.plist`
+で、いずれの値も JSON 文字列 `{"items":[{word, reading, hint, id}]}` です。
+
+**`NSGlobalDomain` は古いミラーで、実際より少ない件数しか返さないことがあります**
+(実測で DB 62 件に対し 5 件)。`--exclude-existing` は DB を一次情報源とし、
+読めない場合のみ `NSGlobalDomain` にフォールバックします。DB は読み取り専用で開きます。
 
 ## テスト
 

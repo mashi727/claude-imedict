@@ -126,10 +126,11 @@ def _write_outputs(cands, out_dir: Path, hint: str) -> None:
     print(f"  azooKey (CSV)    : {azoo_csv}")
     print()
     print("取り込み方:")
-    print("  macOS   システム設定 > キーボード > テキスト入力 > テキスト置換 を開き、")
-    print(f"          {macos.name} をリストへドラッグ&ドロップ")
-    print("  azooKey claude-imedict install-azookey --json "
-          f"{azoo_json.name}")
+    print("  システム設定 > キーボード > テキスト入力 > テキスト置換 を開き、")
+    print(f"  {macos.name} をリストへドラッグ&ドロップ。")
+    print()
+    print("  azooKey は macOS のユーザ辞書を自動で読み込むため、これだけで両方に反映されます。")
+    print("  (azookey-user-dictionary.json / .csv は、OS と共有しない運用のための予備)")
 
 
 def cmd_scan(args) -> int:
@@ -181,6 +182,17 @@ def cmd_install_azookey(args) -> int:
     cands = _load_candidates_for_install(args)
     if not cands:
         _eprint("エラー: 登録する語がありません。")
+        return 1
+
+    if not args.i_know_azookey_follows_macos:
+        _eprint(
+            "azooKey は macOS のユーザ辞書 (テキスト置換) を自動で読み込みます。\n"
+            "  macOS 側へ取り込めば azooKey にも反映されるため、通常このコマンドは不要です。\n"
+            "  ここで書くと azooKey 独自辞書にも同じ語が入り、二重登録になります。\n\n"
+            "  推奨: システム設定 > キーボード > テキスト入力 > テキスト置換 に\n"
+            "        macos-user-dictionary.plist をドラッグ&ドロップ\n\n"
+            "  azooKey にだけ入れたい語がある場合は --azookey-only を付けて再実行してください。"
+        )
         return 1
 
     if not args.dry_run and install.azookey_running():
@@ -241,11 +253,18 @@ def build_parser() -> argparse.ArgumentParser:
     build.set_defaults(func=cmd_build)
 
     inst = sub.add_parser(
-        "install-azookey", help="azooKey のユーザー辞書へ直接マージする"
+        "install-azookey",
+        help="azooKey 独自辞書へ直接マージする (通常不要: azooKey は macOS の辞書を自動追随)",
     )
     grp = inst.add_mutually_exclusive_group(required=True)
     grp.add_argument("--json", type=Path, help="azookey-user-dictionary.json")
     grp.add_argument("--tsv", type=Path, help="terms.tsv")
+    inst.add_argument(
+        "--azookey-only",
+        dest="i_know_azookey_follows_macos",
+        action="store_true",
+        help="macOS と共有せず azooKey 独自辞書にだけ登録することを承知して実行する",
+    )
     inst.add_argument("--hint", default="", help="エントリに付ける備考")
     inst.add_argument("--no-backup", action="store_true", help="plist を退避しない")
     inst.add_argument("--dry-run", action="store_true", help="書き込まず件数だけ表示")
