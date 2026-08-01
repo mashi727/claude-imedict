@@ -61,6 +61,8 @@ def test_iter_transcripts_selects_user_text_only(tmp_path):
              "content": [{"type": "text", "text": "応答の日本語"}]}},
             {"type": "user", "cwd": "/p", "isSidechain": True,
              "message": {"role": "user", "content": "サブエージェントの発話"}},
+            {"type": "user", "cwd": "/p", "isMeta": True,
+             "message": {"role": "user", "content": "スキル本文の注入テキスト"}},
         ],
     )
     texts = [u.text for u in sources.iter_transcripts(tmp_path)]
@@ -70,6 +72,8 @@ def test_iter_transcripts_selects_user_text_only(tmp_path):
     assert "ツール結果" not in joined
     assert "応答の日本語" not in joined
     assert "サブエージェント" not in joined
+    # isMeta はスキル本文等の注入テキストでユーザーの記述ではない
+    assert "スキル本文" not in joined
 
     with_assistant = "\n".join(
         u.text for u in sources.iter_transcripts(tmp_path, include_assistant=True)

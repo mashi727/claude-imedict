@@ -77,3 +77,12 @@ def test_ambiguous_reading_is_flagged_low_confidence():
     cands = extract.extract(utts, extract.ExtractConfig(min_count=3))
     target = [c for c in cands if c.word == "次セッション"]
     assert target and target[0].confidence == "low"
+
+
+def test_known_brand_uses_canonical_spelling():
+    # ユーザーの打鍵が Github に偏っていても、辞書には GitHub を登録する
+    utts = _utts("Github にプッシュする。", times=9)
+    cands = extract.extract(utts, extract.ExtractConfig(min_count=3))
+    ascii_words = {c.word for c in cands if c.kind == "ascii"}
+    assert "GitHub" in ascii_words
+    assert "Github" not in ascii_words

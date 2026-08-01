@@ -230,10 +230,16 @@ def _has_internal_upper(word: str) -> bool:
 def _canonical_ascii_form(forms: Counter) -> str:
     """大文字小文字の揺れから正規の綴りを選ぶ。
 
-    最頻形を基本としつつ、内部に大文字を持つ綴り (LuaTeX 等) は固有名詞の
-    正式表記である可能性が高いので優遇する。ユーザー辞書の目的は
-    「打鍵は小文字、確定は正式表記」なので、正式表記側に寄せるのが有益。
+    1. 正式表記が既知の固有名詞 (GitHub 等) はそれを使う。ユーザーの打鍵が
+       `Github` に偏っていても、辞書側で誤った綴りを再生産しない。
+    2. それ以外は最頻形。ただし内部に大文字を持つ綴り (LuaTeX 等) は固有名詞の
+       正式表記である可能性が高いので優遇する。辞書の目的は
+       「打鍵は小文字、確定は正式表記」なので、正式表記側に寄せるのが有益。
     """
+    known = stoplist.canonical_ascii(next(iter(forms)))
+    if known:
+        return known
+
     def weight(item: tuple[str, int]) -> tuple[float, int]:
         surface, count = item
         w = count * (1.5 if _has_internal_upper(surface) else 1.0)

@@ -93,6 +93,17 @@ COMMON_JA = set("""
 可能性 最終的 原理的 構造化 具体的 基本的 一般的 効率的 自動的 最終
 時点 前提 目的 目標 手順 方針 前提条件 相対的 絶対的 論理的 物理的
 実質的 部分的 全面的 段階的 継続的 定期的 個人的 直感的 客観的 主観的
+アーキテクチャ アカウント アップロード アプリケーション ウィジェット オリジナル
+オーバーレイ カメラ カラー カラム カーソル キャンセル クライアント クリーン
+コピー コントロール コマンドライン サイト サイン サーバ ステータスバー
+ステレオ スケール センサー ダウンロード ダブルクリック チェックボックス
+デザイン デプロイ トグル トークン ドラッグ ドロップ ネットワーク ハイフン
+パスワード ビルド フィードバック フレームワーク プッシュ プラットフォーム
+プロンプト ベース ベストプラクティス ページャ マイク マウス マクロ マージ
+マニュアル ミッション メンバー リモート ルート レイヤー ローカル ログイン
+ループ 世の中 良い感じ 文字程度 使用可能 同程度 行う必要 考え方 管理者
+拡張子 構造的 現実的 全般的 価値観 積極的 可視化 自動化 再利用 再現性
+副作用 表示領域 設定ファイル 音声ファイル 動画ファイル 合同 知的 現代
 """.split())
 
 # ローマ字綴りをそのまま読みにしても意味がない一般英単語
@@ -130,6 +141,45 @@ AFFIXES = set("""
 的 化 性 者 用 目 個 型 版 系 上 中 下 前 後 内 外 間 側 数 度 分 回 本
 無 未 再 各 全 半 約 超 最 第 数個 など 等 及び 且つ ため こと もの とき
 """.split())
+
+
+# 正式表記が確立している固有名詞。ユーザーの打鍵に揺れがあっても、
+# 辞書には正式表記を登録する (誤った綴りを再生産しないため)。
+# 小文字化した綴りをキーにする。
+CANONICAL_ASCII = {
+    "github": "GitHub",
+    "gitlab": "GitLab",
+    "youtube": "YouTube",
+    "javascript": "JavaScript",
+    "typescript": "TypeScript",
+    "nodejs": "Node.js",
+    "postgresql": "PostgreSQL",
+    "mysql": "MySQL",
+    "sqlite": "SQLite",
+    "latex": "LaTeX",
+    "luatex": "LuaTeX",
+    "bibtex": "BibTeX",
+    "pyside": "PySide",
+    "numpy": "NumPy",
+    "scipy": "SciPy",
+    "matplotlib": "Matplotlib",
+    "pytorch": "PyTorch",
+    "openai": "OpenAI",
+    "macos": "macOS",
+    "iphone": "iPhone",
+    "ipad": "iPad",
+    "ios": "iOS",
+    "ffmpeg": "FFmpeg",
+    "obsidian": "Obsidian",
+    "notion": "Notion",
+    "dropbox": "Dropbox",
+    "whisper": "Whisper",
+}
+
+
+def canonical_ascii(word: str) -> str | None:
+    """正式表記が分かっている語ならそれを返す。無ければ None。"""
+    return CANONICAL_ASCII.get(word.lower())
 
 
 def is_stopword(term: str) -> bool:

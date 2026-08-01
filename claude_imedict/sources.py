@@ -120,6 +120,12 @@ def iter_transcripts(
                     continue
                 if rec.get("isSidechain") and not include_sidechain:
                     continue
+                # isMeta はスキル本文・スラッシュコマンドの展開結果など、
+                # user ロールで記録されるがユーザーが書いたのではないテキスト。
+                # 量が非常に多く(実測でユーザー発話の3倍超)、放置すると
+                # スキルの用語が辞書を占拠する。
+                if rec.get("isMeta"):
+                    continue
                 msg = rec.get("message")
                 if not isinstance(msg, dict):
                     continue
