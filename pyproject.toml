@@ -1,0 +1,22 @@
+[build-system]
+requires = ["uv_build>=0.8,<0.9"]
+build-backend = "uv_build"
+
+[project]
+name = "claude-imedict"
+version = "1.0.0"
+description = "Claude Code の対話履歴から macOS 標準 / azooKey のユーザー辞書を生成する"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+dependencies = ["pyobjc-framework-Cocoa>=9.0"]
+
+[project.scripts]
+claude-imedict = "claude_imedict.cli:main"
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[tool.uv.build-backend]
+module-name = "claude_imedict"
+module-root = ""
