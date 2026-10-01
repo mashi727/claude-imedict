@@ -32,7 +32,7 @@ def test_clean_text_drops_ascii_only_lines_by_default():
 
 
 def test_clean_text_strips_paths_containing_japanese():
-    text = "/Users/mashi/Dropbox/01_Projects/合宿資料/for_Download/a.mp4 を見て。\n"
+    text = "/Users/me/Documents/作業資料/for_Download/a.mp4 を見て。\n"
     out = sources.clean_text(text)
     assert "Download" not in out
     assert "を見て。" in out
