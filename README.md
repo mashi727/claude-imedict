@@ -7,6 +7,14 @@ Claude Code の対話履歴から、あなたが実際に使っている語彙�
 対話履歴には、専門用語・固有名詞・プロジェクト固有の言い回しが自然な形で
 大量に蓄積されています。それを IME に還元して変換効率を上げることが目的です。
 
+## 考え方
+
+何が問題で、それをどう解いているかを PAD（問題分析図）で示します。各段の詳細は下の各節を参照してください。
+
+<img src="docs/pad/concept.png" alt="考え方の PAD。自分の語彙を IME に還元するため、対話履歴から候補語を抽出し、人が terms.tsv を見直し、辞書を作り直して macOS のテキスト置換へ取り込む。azooKey はそれに自動で追随する" width="100%">
+
+<sub>図の元は [`docs/pad/concept.spd`](docs/pad/concept.spd)。[padkit](https://github.com/mashi727/padkit) で検査・描画しています。</sub>
+
 ## 特徴
 
 - **依存が最小**: 読みの推定に macOS 内蔵の `CFStringTokenizer` を使うため、
